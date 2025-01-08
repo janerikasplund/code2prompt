@@ -29,9 +29,9 @@ struct Cli {
     #[arg()]
     path: PathBuf,
 
-    /// Patterns to include
-    #[clap(long)]
-    include: Option<String>,
+    /// Patterns to include (can be specified multiple times)
+    #[clap(long, value_delimiter = ',', num_args = 1.., value_name = "PATTERN")]
+    include: Vec<String>,
 
     /// Patterns to exclude
     #[clap(long)]
@@ -111,8 +111,8 @@ fn main() -> Result<()> {
     // Progress Bar Setup
     let spinner = setup_spinner("Traversing directory and building tree...");
 
-    // Parse Patterns
-    let include_patterns = parse_patterns(&args.include);
+    // Include patterns now come directly as Vec<String>
+    let include_patterns = args.include.clone();
     let exclude_patterns = parse_patterns(&args.exclude);
 
     // Traverse the directory
@@ -294,24 +294,6 @@ fn setup_spinner(message: &str) -> ProgressBar {
     spinner
 }
 
-/// Parses comma-separated patterns into a vector of strings
-///
-/// # Arguments
-///
-/// * `patterns` - An optional string containing comma-separated patterns
-///
-/// # Returns
-///
-/// * `Vec<String>` - A vector of parsed patterns
-fn parse_patterns(patterns: &Option<String>) -> Vec<String> {
-    match patterns {
-        Some(patterns) if !patterns.is_empty() => {
-            patterns.split(',').map(|s| s.trim().to_string()).collect()
-        }
-        _ => vec![],
-    }
-}
-
 /// Retrieves the template content and name based on the CLI arguments
 ///
 /// # Arguments
@@ -331,5 +313,23 @@ fn get_template(args: &Cli) -> Result<(String, &str)> {
             include_str!("default_template.hbs").to_string(),
             DEFAULT_TEMPLATE_NAME,
         ))
+    }
+}
+
+/// Parses patterns from a string
+///
+/// # Arguments
+///
+/// * `patterns` - A string containing patterns separated by commas
+///
+/// # Returns
+///
+/// * `Vec<String>` - A vector of parsed patterns
+fn parse_patterns(patterns: &Option<String>) -> Vec<String> {
+    match patterns {
+        Some(patterns) if !patterns.is_empty() => {
+            patterns.split(',').map(|s| s.trim().to_string()).collect()
+        }
+        _ => vec![],
     }
 }

@@ -5,6 +5,7 @@ use glob::Pattern;
 use log::{debug, error};
 use std::fs;
 use std::path::Path;
+use regex::Regex;
 
 /// Determines whether a file should be included based on include and exclude patterns.
 ///
@@ -32,12 +33,29 @@ pub fn should_include_file(
             return false;
         }
     };
-    let path_str = canonical_path.to_str().unwrap();
+    let path_str = canonical_path.to_str().unwrap_or("");
+    let file_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
 
-    // ~~~ Check glob patterns ~~~
-    let included = include_patterns
-        .iter()
-        .any(|pattern| Pattern::new(pattern).unwrap().matches(path_str));
+    // ~~~ Check patterns ~~~
+    let included = include_patterns.iter().any(|pattern| {
+        // Try as glob pattern first
+        if let Ok(glob) = Pattern::new(pattern) {
+            if glob.matches(path_str) {
+                return true;
+            }
+        }
+
+        // Try as simple wildcard pattern
+        if let Some(wildcard_pattern) = pattern.strip_suffix('*') {
+            if file_name.starts_with(wildcard_pattern) {
+                return true;
+            }
+        }
+
+        // Try exact match
+        file_name == pattern
+    });
+
     let excluded = exclude_patterns
         .iter()
         .any(|pattern| Pattern::new(pattern).unwrap().matches(path_str));
